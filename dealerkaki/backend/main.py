@@ -5,6 +5,7 @@ from typing import Optional
 from datetime import date
 
 from auth import LoginRequest, LoginResponse, create_session_token, verify_user_credentials
+from database import init_db
 from valuation import (
     calculate_parf_rebate,
     calculate_base_depreciation,
@@ -14,6 +15,11 @@ from valuation import (
 )
 
 app = FastAPI()
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    init_db()
 
 # Enable CORS for frontend
 app.add_middleware(
