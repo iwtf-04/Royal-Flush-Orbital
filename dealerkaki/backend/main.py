@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import date
 
+from auth import LoginRequest, LoginResponse, create_session_token, verify_user_credentials
 from valuation import (
     calculate_parf_rebate,
     calculate_base_depreciation,
@@ -17,7 +18,11 @@ app = FastAPI()
 # Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,6 +55,19 @@ async def health_check():
         "status": "ok",
         "service": "DealerKaki valuation API"
     }
+
+
+@app.post("/api/login", response_model=LoginResponse)
+async def login(request: LoginRequest):
+    if not verify_user_credentials(request.username, request.password):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    token = create_session_token(request.username)
+    return LoginResponse(
+        success=True,
+        message="Login successful",
+        token=token,
+    )
 
 
 @app.post("/api/vehicle-valuation", response_model=ValuationResponse)
