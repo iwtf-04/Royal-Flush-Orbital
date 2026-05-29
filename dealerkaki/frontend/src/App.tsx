@@ -21,6 +21,11 @@ interface ValuationResult {
   recommendedIntakePrice: number;
 }
 
+interface UserProfile {
+  username: string;
+  role: string;
+}
+
 const initialForm: FormData = {
   ageYears: '',
   arf: '',
@@ -35,6 +40,8 @@ function App() {
   const [error, setError] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.currentTarget;
@@ -79,18 +86,31 @@ function App() {
     }
   };
 
-  const handleLogin = (token: string) => {
+  const handleLogin = (token: string, username: string, role: string) => {
     setAuthToken(token);
+    setProfile({ username, role });
     setIsAuthenticated(true);
     setError('');
   };
 
   const handleLogout = () => {
     setAuthToken(null);
+    setProfile(null);
     setIsAuthenticated(false);
     setResult(null);
     setForm(initialForm);
     setError('');
+    setIsProfileOpen(false);
+  };
+
+  const getProfileDescription = (role: string) => {
+    const mapping: Record<string, string> = {
+      'frontline staff': 'Supports customer-facing operations.',
+      'inventory manager': 'Manages stock and inventory planning.',
+      'dealer': 'Dealer.',
+      'admin': 'Admin.',
+    };
+    return mapping[role] ?? 'View and manage your account details.';
   };
 
   return (
@@ -107,11 +127,39 @@ function App() {
                 <h1>DealerKaki Valuation Tool</h1>
                 <p>Enter trade-in details to compute PARF rebate, depreciation, market price, and intake recommendation.</p>
               </div>
-              <button type="button" className="logout-button" onClick={handleLogout}>
-                Logout
-              </button>
+              <div className="header-actions">
+                <button
+                  type="button"
+                  className="profile-button"
+                  onClick={() => setIsProfileOpen((open) => !open)}
+                >
+                  {profile?.username.charAt(0).toUpperCase() || 'U'}
+                </button>
+                <button type="button" className="logout-button" onClick={handleLogout}>
+                  Logout
+                </button>
+              </div>
             </div>
           </header>
+
+          {profile && (
+            <aside className={`profile-panel ${isProfileOpen ? 'open' : ''}`}>
+              <div className="profile-panel-header">
+                <h3>Profile</h3>
+                <button type="button" className="close-profile-button" onClick={() => setIsProfileOpen(false)}>
+                  ×
+                </button>
+              </div>
+              <div className="profile-summary">
+                <div className="profile-icon-large">{profile.username.charAt(0).toUpperCase()}</div>
+                <div>
+                  <p className="profile-name">{profile.username}</p>
+                  <p className="profile-role">{profile.role}</p>
+                </div>
+              </div>
+              <p className="profile-description">{getProfileDescription(profile.role)}</p>
+            </aside>
+          )}
 
           <main>
             <section className="form-card">
