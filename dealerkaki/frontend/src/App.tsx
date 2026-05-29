@@ -26,6 +26,8 @@ interface UserProfile {
   role: string;
 }
 
+type FeatureId = 'dashboard' | 'valuation' | 'simulation' | 'inventory' | 'members';
+
 const initialForm: FormData = {
   ageYears: '',
   arf: '',
@@ -42,6 +44,7 @@ function App() {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [activeFeature, setActiveFeature] = useState<FeatureId>('dashboard');
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.currentTarget;
@@ -101,6 +104,48 @@ function App() {
     setForm(initialForm);
     setError('');
     setIsProfileOpen(false);
+    setActiveFeature('dashboard');
+  };
+
+  const features = [
+    {
+      id: 'valuation' as const,
+      title: '1) VEHICLE VALUATION CALCULATOR',
+      description: 'Use the existing valuation tool for ARF, COE, depreciation, and PARF estimates.',
+      roles: ['admin', 'dealer', 'frontline staff'],
+    },
+    {
+      id: 'simulation' as const,
+      title: '2) SCENARIO SIMULATION TOOL',
+      description: 'Build and compare vehicle trade-in scenarios for margin planning.',
+      roles: ['admin', 'dealer'],
+    },
+    {
+      id: 'inventory' as const,
+      title: '3) INVENTORY DASHBOARD',
+      description: 'View stock levels, inventory status, and vehicle pipeline summaries.',
+      roles: ['admin', 'dealer', 'inventory manager'],
+    },
+    {
+      id: 'members' as const,
+      title: '4) EDIT MEMBERS',
+      description: 'Manage salesperson and dealer access for the application.',
+      roles: ['admin', 'dealer'],
+    },
+  ];
+
+  const canAccessFeature = (featureId: FeatureId) => {
+    if (!profile) return false;
+    const feature = features.find((item) => item.id === featureId);
+    return feature ? feature.roles.includes(profile.role) : false;
+  };
+
+  const openFeature = (featureId: FeatureId) => {
+    if (canAccessFeature(featureId)) {
+      setActiveFeature(featureId);
+      setError('');
+      setResult(null);
+    }
   };
 
   const getProfileDescription = (role: string) => {
@@ -124,8 +169,7 @@ function App() {
           <header>
             <div className="header-row">
               <div>
-                <h1>DealerKaki Valuation Tool</h1>
-                <p>Enter trade-in details to compute PARF rebate, depreciation, market price, and intake recommendation.</p>
+                <h1>DealerKaki</h1>
               </div>
               <div className="header-actions">
                 <button
@@ -162,98 +206,158 @@ function App() {
           )}
 
           <main>
-            <section className="form-card">
-              <h2>Vehicle Details</h2>
-              <form onSubmit={handleSubmit}>
-                <label>
-                  Vehicle Age (years)
-                  <input
-                    type="number"
-                    name="ageYears"
-                    min="0"
-                    step="0.1"
-                    placeholder="Enter vehicle age"
-                    value={form.ageYears}
-                    onChange={handleChange}
-                  />
-                </label>
-
-                <label>
-                  ARF ($)
-                  <input
-                    type="number"
-                    name="arf"
-                    min="0"
-                    step="100"
-                    placeholder="Enter ARF amount"
-                    value={form.arf}
-                    onChange={handleChange}
-                  />
-                </label>
-
-                <label>
-                  COE ($)
-                  <input
-                    type="number"
-                    name="coe"
-                    min="0"
-                    step="100"
-                    placeholder="Enter COE amount"
-                    value={form.coe}
-                    onChange={handleChange}
-                  />
-                </label>
-                <label>
-                  Registration Date
-                  <input
-                    type="date"
-                    name="registrationDate"
-                    value={form.registrationDate}
-                    onChange={handleChange}
-                    required
-                  />
-                </label>
-                <button type="submit" disabled={loading}>
-                  {loading ? 'Calculating...' : 'Calculate Valuation'}
-                </button>
-              </form>
-            </section>
-
-            {error && (
-              <section className="error-card">
-                <h3>Error</h3>
-                <p>{error}</p>
+            {activeFeature === 'dashboard' ? (
+              <section className="dashboard-card">
+                <div className="dashboard-header">
+                  <div>
+                    <h2>Welcome, {profile?.username}</h2>
+                  </div>
+                </div>
+                <div className="dashboard-grid">
+                  {features.map((feature) => {
+                    const allowed = canAccessFeature(feature.id);
+                    return (
+                      <button
+                        key={feature.id}
+                        type="button"
+                        className={`feature-card ${allowed ? '' : 'disabled'}`}
+                        disabled={!allowed}
+                        onClick={() => openFeature(feature.id)}
+                      >
+                        <div className="feature-card-title">{feature.title}</div>
+                        {!allowed && <span className="feature-card-badge">No access</span>}
+                      </button>
+                    );
+                  })}
+                </div>
               </section>
-            )}
+            ) : (
+              <section className="feature-page">
+                <button type="button" className="secondary-button" onClick={() => setActiveFeature('dashboard')}>
+                  ← Back to dashboard
+                </button>
+                {activeFeature === 'valuation' && (
+                  <>
+                    <section className="form-card">
+                      <h2>Vehicle Details</h2>
+                      <form onSubmit={handleSubmit}>
+                        <label>
+                          Vehicle Age (years)
+                          <input
+                            type="number"
+                            name="ageYears"
+                            min="0"
+                            step="0.1"
+                            placeholder="Enter vehicle age"
+                            value={form.ageYears}
+                            onChange={handleChange}
+                          />
+                        </label>
 
-            {result && (
-              <section className="result-card">
-                <h2>Valuation Results</h2>
-                <div className="result-info">
-                  <p><strong>PARF Scheme:</strong> {result.parfScheme}</p>
-                  <p><strong>PARF Cap:</strong> S${result.parfCap.toLocaleString()}</p>
-                </div>
-                <div className="result-grid">
-                  <div className="result-item">
-                    <label>Estimated PARF Rebate</label>
-                    <p className="result-value">S${result.estimatedParfRebate.toLocaleString()}</p>
-                  </div>
+                        <label>
+                          ARF ($)
+                          <input
+                            type="number"
+                            name="arf"
+                            min="0"
+                            step="100"
+                            placeholder="Enter ARF amount"
+                            value={form.arf}
+                            onChange={handleChange}
+                          />
+                        </label>
 
-                  <div className="result-item">
-                    <label>Depreciation Value</label>
-                    <p className="result-value">S${result.depreciationValue.toLocaleString()}</p>
-                  </div>
+                        <label>
+                          COE ($)
+                          <input
+                            type="number"
+                            name="coe"
+                            min="0"
+                            step="100"
+                            placeholder="Enter COE amount"
+                            value={form.coe}
+                            onChange={handleChange}
+                          />
+                        </label>
+                        <label>
+                          Registration Date
+                          <input
+                            type="date"
+                            name="registrationDate"
+                            value={form.registrationDate}
+                            onChange={handleChange}
+                            required
+                          />
+                        </label>
+                        <button type="submit" disabled={loading}>
+                          {loading ? 'Calculating...' : 'Calculate Valuation'}
+                        </button>
+                      </form>
+                    </section>
 
-                  <div className="result-item">
-                    <label>Estimated Market Price</label>
-                    <p className="result-value">S${result.estimatedMarketPrice.toLocaleString()}</p>
-                  </div>
+                    {error && (
+                      <section className="error-card">
+                        <h3>Error</h3>
+                        <p>{error}</p>
+                      </section>
+                    )}
 
-                  <div className="result-item">
-                    <label>Recommended Intake Price</label>
-                    <p className="result-value">S${result.recommendedIntakePrice.toLocaleString()}</p>
-                  </div>
-                </div>
+                    {result && (
+                      <section className="result-card">
+                        <h2>Valuation Results</h2>
+                        <div className="result-info">
+                          <p><strong>PARF Scheme:</strong> {result.parfScheme}</p>
+                          <p><strong>PARF Cap:</strong> S${result.parfCap.toLocaleString()}</p>
+                        </div>
+                        <div className="result-grid">
+                          <div className="result-item">
+                            <label>Estimated PARF Rebate</label>
+                            <p className="result-value">S${result.estimatedParfRebate.toLocaleString()}</p>
+                          </div>
+
+                          <div className="result-item">
+                            <label>Depreciation Value</label>
+                            <p className="result-value">S${result.depreciationValue.toLocaleString()}</p>
+                          </div>
+
+                          <div className="result-item">
+                            <label>Estimated Market Price</label>
+                            <p className="result-value">S${result.estimatedMarketPrice.toLocaleString()}</p>
+                          </div>
+
+                          <div className="result-item">
+                            <label>Recommended Intake Price</label>
+                            <p className="result-value">S${result.recommendedIntakePrice.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      </section>
+                    )}
+                  </>
+                )}
+
+                {activeFeature === 'simulation' && (
+                  <section className="feature-panel">
+                    <h2>Scenario Simulation Tool</h2>
+                    <p>This feature is available to admin and dealer users.</p>
+                    <p>Use this area to build and compare trade-in scenarios for margin planning.</p>
+                  </section>
+                )}
+
+                {activeFeature === 'inventory' && (
+                  <section className="feature-panel">
+                    <h2>Inventory Dashboard</h2>
+                    <p>This feature is available to admin, dealer, and inventory manager users.</p>
+                    <p>View stock levels, inventory status, and dealer pipeline summaries here.</p>
+                  </section>
+                )}
+
+                {activeFeature === 'members' && (
+                  <section className="feature-panel">
+                    <h2>Edit Members</h2>
+                    <p>This feature is available to admin and dealer users only.</p>
+                    <p>Manage team access and user roles from this section.</p>
+                  </section>
+                )}
               </section>
             )}
           </main>
