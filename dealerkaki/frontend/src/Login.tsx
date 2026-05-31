@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 interface LoginProps {
-  onLogin: (token: string) => void;
+  onLogin: (token: string, username: string, role: string) => void;
 }
 
 function Login({ onLogin }: LoginProps) {
@@ -32,7 +32,7 @@ function Login({ onLogin }: LoginProps) {
       }
 
       setMessage('Login successful');
-      onLogin(data.token);
+      onLogin(data.token, data.username, data.role);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
