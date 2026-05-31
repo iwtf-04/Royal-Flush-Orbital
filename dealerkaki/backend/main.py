@@ -4,7 +4,13 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import date
 
-from auth import LoginRequest, LoginResponse, create_session_token, verify_user_credentials
+from auth import (
+    LoginRequest,
+    LoginResponse,
+    create_session_token,
+    get_user_by_username,
+    verify_user_credentials,
+)
 from database import init_db
 from valuation import (
     calculate_parf_rebate,
@@ -65,7 +71,8 @@ async def health_check():
 
 @app.post("/api/login", response_model=LoginResponse)
 async def login(request: LoginRequest):
-    if not verify_user_credentials(request.username, request.password):
+    user = get_user_by_username(request.username)
+    if user is None or not verify_user_credentials(request.username, request.password):
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     token = create_session_token(request.username)
@@ -73,6 +80,8 @@ async def login(request: LoginRequest):
         success=True,
         message="Login successful",
         token=token,
+        username=user["username"],
+        role=user["role"],
     )
 
 

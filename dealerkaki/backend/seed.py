@@ -8,8 +8,10 @@ def seed_users() -> None:
     init_db()
 
     users = [
-        ("dealer", "password123", "staff"),
-        ("admin", "adminpass", "admin"),
+        ("staff1", "staff123", "frontline staff"),
+        ("inventory1", "inventory123", "inventory manager"),
+        ("dealer1", "dealer123", "dealer"),
+        ("admin1", "admin123", "admin"),
     ]
 
     with get_conn() as conn:
@@ -23,7 +25,7 @@ def seed_users() -> None:
                 (username, password_hash, role, datetime.utcnow().isoformat()),
             )
 
-    print("Seed completed: dealer and admin users created.")
+    print("Seed completed: staff1, inventory1, dealer1, and admin1 users created.")
 
 
 if __name__ == "__main__":

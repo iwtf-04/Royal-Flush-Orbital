@@ -24,6 +24,8 @@ class LoginResponse(BaseModel):
     success: bool
     message: str
     token: Optional[str] = None
+    username: Optional[str] = None
+    role: Optional[str] = None
 
 
 @dataclass
