@@ -2,18 +2,26 @@
 
 # Backend — run locally
 1. Open a terminal and change to the backend folder:
+```bash
 cd dealerkaki/backend
+```
 
 2. Create and activate a virtual environment (macOS / Linux):
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
+```
 
 3. Install Python dependencies:
+```bash
 pip install -r requirements.txt
+```
 
 
 4. Seed the database with test users:
+```bash
 python seed.py
+```
 
 Seeded users (username:password):
 - `staff1:staff123` (frontline staff)
@@ -22,16 +30,19 @@ Seeded users (username:password):
 - `admin1:admin123` (admin)
 
 5. Start the backend (development):
+```bash
 uvicorn main:app --reload --port 3000
-or
+# or
 python main.py
-
+```
 Health check: `http://127.0.0.1:3000/api/health`
 
 # Frontend — run locally
 
 1. Open a second terminal and change to the frontend folder:
+```bash
 cd dealerkaki/frontend
+```
 
 2. Install dependencies and start the dev server:
 ```bash
