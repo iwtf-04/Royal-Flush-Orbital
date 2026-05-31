@@ -34,8 +34,10 @@ Health check: `http://127.0.0.1:3000/api/health`
 cd dealerkaki/frontend
 
 2. Install dependencies and start the dev server:
+```bash
 npm install
 npm run dev
+```
 
 Vite will start on `http://localhost:5173/`. 
 
