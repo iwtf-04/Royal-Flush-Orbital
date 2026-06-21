@@ -1,11 +1,20 @@
 import { useState } from 'react';
 import Login from './Login';
+import InventoryDashboard from './InventoryDashboard';
 
 interface FormData {
+  make: string;
+  model: string;
+  licensePlate: string;
+  year: string;
+  mileage: string;
+  vehicleType: string;
+  seatCount: string;
   ageYears: string;
   arf: string;
   coe: string;
   registrationDate: string;
+  agreedPurchaseCost: string;
 }
 
 interface ValuationResult {
@@ -29,16 +38,26 @@ interface UserProfile {
 type FeatureId = 'dashboard' | 'valuation' | 'simulation' | 'inventory' | 'members';
 
 const initialForm: FormData = {
+  make: '',
+  model: '',
+  licensePlate: '',
+  year: '',
+  mileage: '0',
+  vehicleType: 'Sedan',
+  seatCount: '5',
   ageYears: '',
   arf: '',
   coe: '',
-  registrationDate: ''
+  registrationDate: '',
+  agreedPurchaseCost: '',
 };
 
 function App() {
   const [form, setForm] = useState<FormData>(initialForm);
   const [result, setResult] = useState<ValuationResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [addInventoryLoading, setAddInventoryLoading] = useState(false);
+  const [inventorySaveMessage, setInventorySaveMessage] = useState('');
   const [error, setError] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
@@ -89,6 +108,55 @@ function App() {
     }
   };
 
+  const handleAddToInventory = async () => {
+    if (!result || !authToken) return;
+    setAddInventoryLoading(true);
+    setError('');
+    setInventorySaveMessage('');
+
+    try {
+      const response = await fetch('/api/inventory/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          vin: '',
+          licensePlate: form.licensePlate,
+          make: form.make,
+          model: form.model,
+          year: Number(form.year),
+          mileage: Number(form.mileage),
+          arf: Number(form.arf),
+          coe: Number(form.coe),
+          currentCoe: Number(form.coe),
+          registrationDate: form.registrationDate,
+          agreedPurchaseCost: Number(form.agreedPurchaseCost),
+          estimatedMarketValue: result.estimatedMarketPrice,
+          recommendedIntakePrice: result.recommendedIntakePrice,
+          targetSellingPrice: result.recommendedIntakePrice,
+          depreciationRate: result.depreciationValue / (Number(form.arf || 0) + Number(form.coe || 1)),
+          dateAcquired: new Date().toISOString().split('T')[0],
+          vehicleType: form.vehicleType,
+          seatCount: Number(form.seatCount),
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error('detail' in data ? (data as any).detail : 'Failed to add vehicle to inventory');
+      }
+
+      setInventorySaveMessage('Vehicle added to inventory successfully.');
+      setForm((prev) => ({ ...prev, agreedPurchaseCost: '' }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setAddInventoryLoading(false);
+    }
+  };
+
   const handleLogin = (token: string, username: string, role: string) => {
     setAuthToken(token);
     setProfile({ username, role });
@@ -124,7 +192,7 @@ function App() {
       id: 'inventory' as const,
       title: '3) INVENTORY DASHBOARD',
       description: 'View stock levels, inventory status, and vehicle pipeline summaries.',
-      roles: ['admin', 'dealer', 'inventory manager'],
+      roles: ['admin', 'dealer', 'inventory manager', 'frontline staff'],
     },
     {
       id: 'members' as const,
@@ -255,6 +323,90 @@ function App() {
                         </label>
 
                         <label>
+                          Make
+                          <input
+                            type="text"
+                            name="make"
+                            placeholder="Vehicle make"
+                            value={form.make}
+                            onChange={handleChange}
+                          />
+                        </label>
+
+                        <label>
+                          Model
+                          <input
+                            type="text"
+                            name="model"
+                            placeholder="Vehicle model"
+                            value={form.model}
+                            onChange={handleChange}
+                          />
+                        </label>
+
+                        <label>
+                          License Plate
+                          <input
+                            type="text"
+                            name="licensePlate"
+                            placeholder="License plate"
+                            value={form.licensePlate}
+                            onChange={handleChange}
+                          />
+                        </label>
+
+                        <label>
+                          Mileage (km)
+                          <input
+                            type="number"
+                            name="mileage"
+                            min="0"
+                            step="100"
+                            placeholder="Enter mileage"
+                            value={form.mileage}
+                            onChange={handleChange}
+                          />
+                        </label>
+
+                        <label>
+                          Year
+                          <input
+                            type="number"
+                            name="year"
+                            min="1900"
+                            max="2099"
+                            step="1"
+                            placeholder="Year of vehicle"
+                            value={form.year}
+                            onChange={handleChange}
+                          />
+                        </label>
+
+                        <label>
+                          Vehicle Type
+                          <input
+                            type="text"
+                            name="vehicleType"
+                            placeholder="Sedan, SUV, MPV"
+                            value={form.vehicleType}
+                            onChange={handleChange}
+                          />
+                        </label>
+
+                        <label>
+                          Seats
+                          <input
+                            type="number"
+                            name="seatCount"
+                            min="1"
+                            step="1"
+                            placeholder="Number of seats"
+                            value={form.seatCount}
+                            onChange={handleChange}
+                          />
+                        </label>
+
+                        <label>
                           ARF ($)
                           <input
                             type="number"
@@ -303,13 +455,14 @@ function App() {
                     )}
 
                     {result && (
-                      <section className="result-card">
-                        <h2>Valuation Results</h2>
-                        <div className="result-info">
-                          <p><strong>PARF Scheme:</strong> {result.parfScheme}</p>
-                          <p><strong>PARF Cap:</strong> S${result.parfCap.toLocaleString()}</p>
-                        </div>
-                        <div className="result-grid">
+                      <>
+                        <section className="result-card">
+                          <h2>Valuation Results</h2>
+                          <div className="result-info">
+                            <p><strong>PARF Scheme:</strong> {result.parfScheme}</p>
+                            <p><strong>PARF Cap:</strong> S${result.parfCap.toLocaleString()}</p>
+                          </div>
+                          <div className="result-grid">
                           <div className="result-item">
                             <label>Estimated PARF Rebate</label>
                             <p className="result-value">S${result.estimatedParfRebate.toLocaleString()}</p>
@@ -331,6 +484,38 @@ function App() {
                           </div>
                         </div>
                       </section>
+
+                      <section className="result-card">
+                        <h2>Add to Inventory</h2>
+                        <div className="result-info">
+                          <p><strong>Estimated Market Value:</strong> S${result.estimatedMarketPrice.toLocaleString()}</p>
+                          <p><strong>Recommended Selling Price:</strong> S${result.recommendedIntakePrice.toLocaleString()}</p>
+                        </div>
+                        <div className="inventory-entry-form">
+                          <label>
+                            Agreed Purchase / Trade-in Cost
+                            <input
+                              type="number"
+                              name="agreedPurchaseCost"
+                              min="0"
+                              step="100"
+                              placeholder="Enter agreed cost"
+                              value={form.agreedPurchaseCost}
+                              onChange={handleChange}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            className="primary-button"
+                            onClick={handleAddToInventory}
+                            disabled={addInventoryLoading || !form.agreedPurchaseCost}
+                          >
+                            {addInventoryLoading ? 'Adding...' : 'Add To Inventory'}
+                          </button>
+                        </div>
+                        {inventorySaveMessage && <p className="success-message">{inventorySaveMessage}</p>}
+                      </section>
+                    </>
                     )}
                   </>
                 )}
@@ -344,11 +529,7 @@ function App() {
                 )}
 
                 {activeFeature === 'inventory' && (
-                  <section className="feature-panel">
-                    <h2>Inventory Dashboard</h2>
-                    <p>This feature is available to admin, dealer, and inventory manager users.</p>
-                    <p>View stock levels, inventory status, and dealer pipeline summaries here.</p>
-                  </section>
+                  <InventoryDashboard />
                 )}
 
                 {activeFeature === 'members' && (
