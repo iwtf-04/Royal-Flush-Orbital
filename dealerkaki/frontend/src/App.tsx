@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import Login from './Login';
 import InventoryDashboard from './InventoryDashboard';
+import ScenarioSimulation from './ScenarioSimulation';
+import MembersEditor from './MembersEditor';
 
 interface FormData {
   make: string;
@@ -183,16 +185,16 @@ function App() {
       roles: ['admin', 'dealer', 'frontline staff'],
     },
     {
-      id: 'simulation' as const,
-      title: '2) SCENARIO SIMULATION TOOL',
-      description: 'Build and compare vehicle trade-in scenarios for margin planning.',
-      roles: ['admin', 'dealer'],
-    },
-    {
       id: 'inventory' as const,
-      title: '3) INVENTORY DASHBOARD',
+      title: '2) INVENTORY DASHBOARD',
       description: 'View stock levels, inventory status, and vehicle pipeline summaries.',
       roles: ['admin', 'dealer', 'inventory manager', 'frontline staff'],
+    },
+    {
+      id: 'simulation' as const,
+      title: '3) SCENARIO SIMULATION TOOL',
+      description: 'Build and compare vehicle trade-in scenarios for margin planning.',
+      roles: ['admin', 'dealer'],
     },
     {
       id: 'members' as const,
@@ -521,11 +523,7 @@ function App() {
                 )}
 
                 {activeFeature === 'simulation' && (
-                  <section className="feature-panel">
-                    <h2>Scenario Simulation Tool</h2>
-                    <p>This feature is available to admin and dealer users.</p>
-                    <p>Use this area to build and compare trade-in scenarios for margin planning.</p>
-                  </section>
+                  <ScenarioSimulation authToken={authToken} />
                 )}
 
                 {activeFeature === 'inventory' && (
@@ -533,11 +531,7 @@ function App() {
                 )}
 
                 {activeFeature === 'members' && (
-                  <section className="feature-panel">
-                    <h2>Edit Members</h2>
-                    <p>This feature is available to admin and dealer users only.</p>
-                    <p>Manage team access and user roles from this section.</p>
-                  </section>
+                  <MembersEditor authToken={authToken} />
                 )}
               </section>
             )}

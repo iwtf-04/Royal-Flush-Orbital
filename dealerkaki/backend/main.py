@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -8,7 +8,11 @@ from auth import (
     LoginRequest,
     LoginResponse,
     create_session_token,
+    get_all_users,
+    create_user,
+    delete_user,
     get_user_by_username,
+    get_username_from_token,
     verify_user_credentials,
 )
 from database import init_db
@@ -20,6 +24,7 @@ from inventory import (
     get_vehicles_by_risk_level,
     sell_inventory_vehicle,
 )
+from inventory import get_vehicle_by_id, calculate_risk_score, determine_risk_level, determine_recommendation
 from valuation import (
     calculate_parf_rebate,
     calculate_base_depreciation,
@@ -93,6 +98,34 @@ class InventoryAddRequest(BaseModel):
 class InventorySaleRequest(BaseModel):
     soldPrice: float
     soldDate: Optional[str] = None
+
+
+class SimulationRequest(BaseModel):
+    coePercent: float  # e.g., -20 to +20
+    parfPercent: float  # e.g., -30 to +30
+    depreciationRate: float  # decimal fraction e.g., 0.05 for 5%
+
+
+class UserCreateRequest(BaseModel):
+    username: str
+    password: str
+    role: str
+
+
+ALLOWED_USER_ROLES = ['admin', 'dealer', 'inventory manager', 'frontline staff']
+
+
+def get_current_user(authorization: Optional[str]) -> dict:
+    if not authorization or not authorization.startswith('Bearer '):
+        raise HTTPException(status_code=401, detail='Missing authorization token')
+    token = authorization.split(' ', 1)[1]
+    username = get_username_from_token(token)
+    if not username:
+        raise HTTPException(status_code=401, detail='Invalid or expired token')
+    user = get_user_by_username(username)
+    if not user:
+        raise HTTPException(status_code=401, detail='Invalid user account')
+    return user
 
 
 @app.get("/api/health")
@@ -218,6 +251,117 @@ async def delete_inventory_item(vehicle_id: int):
         raise HTTPException(status_code=404, detail="Vehicle not found")
 
     return {"success": True, "deleted_id": vehicle_id}
+
+
+@app.get("/api/users")
+async def list_users(authorization: Optional[str] = Header(None)):
+    current_user = get_current_user(authorization)
+    if current_user["role"] not in ("admin", "dealer"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to manage users")
+    return {"users": get_all_users()}
+
+
+@app.post("/api/users")
+async def create_user_account(request: UserCreateRequest, authorization: Optional[str] = Header(None)):
+    current_user = get_current_user(authorization)
+    if current_user["role"] not in ("admin", "dealer"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to manage users")
+
+    username = request.username.strip()
+    role = request.role.strip().lower()
+    if not username or not request.password:
+        raise HTTPException(status_code=400, detail="Username and password are required")
+    if role not in ALLOWED_USER_ROLES:
+        raise HTTPException(status_code=400, detail=f"Role must be one of: {', '.join(ALLOWED_USER_ROLES)}")
+    if get_user_by_username(username):
+        raise HTTPException(status_code=400, detail="Username already exists")
+
+    user = create_user(username, request.password, role)
+    return {"success": True, "user": user}
+
+
+@app.delete("/api/users/{user_id}")
+async def remove_user_account(user_id: int, authorization: Optional[str] = Header(None)):
+    current_user = get_current_user(authorization)
+    if current_user["role"] not in ("admin", "dealer"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to manage users")
+    if current_user["id"] == user_id:
+        raise HTTPException(status_code=400, detail="Cannot remove your own user account")
+
+    deleted = delete_user(user_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"success": True, "deleted_id": user_id}
+
+
+@app.post("/api/inventory/{vehicle_id}/simulate")
+async def simulate_vehicle_scenario(vehicle_id: int, request: SimulationRequest, authorization: Optional[str] = Header(None)):
+    # Simple auth: expect Bearer token in Authorization header
+    token = None
+    if authorization:
+        if authorization.startswith("Bearer "):
+            token = authorization.split(" ", 1)[1]
+    # Validate token and role
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing authorization token")
+    username = None
+    from auth import get_username_from_token, get_user_by_username
+
+    username = get_username_from_token(token)
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    user = get_user_by_username(username)
+    if not user or user.get("role") not in ("dealer", "admin"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to run simulations")
+
+    vehicle = get_vehicle_by_id(vehicle_id)
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+
+    # Apply simulation
+    current_value = float(vehicle.get("current_market_value") or vehicle.get("estimated_value") or 0)
+    purchase_price = float(vehicle.get("purchase_price") or 0)
+
+    coe_multiplier = 1.0 + (request.coePercent / 100.0)
+    parf_multiplier = 1.0 + (request.parfPercent / 100.0)
+    depreciation_rate = float(request.depreciationRate)
+
+    simulated_value = current_value * coe_multiplier * parf_multiplier
+    depreciation_loss = current_value * depreciation_rate
+    simulated_value = max(0.0, simulated_value - depreciation_loss)
+
+    # For simplicity assume simulated selling price equals simulated value
+    simulated_selling_price = simulated_value
+    simulated_profit = simulated_selling_price - purchase_price
+    simulated_margin = (simulated_profit / simulated_selling_price * 100.0) if simulated_selling_price > 0 else 0.0
+
+    # Risk and recommendation using existing helpers
+    risk_score = calculate_risk_score(int(vehicle.get("days_in_inventory") or 0), depreciation_rate, (simulated_margin / 100.0))
+    risk_level = determine_risk_level(risk_score)
+    recommendation = determine_recommendation(int(vehicle.get("days_in_inventory") or 0), depreciation_rate, (simulated_margin / 100.0))
+
+    return {
+        "vehicle": vehicle,
+        "current": {
+            "selling_price": current_value,
+            "profit": (current_value - purchase_price),
+            "margin": round(( (current_value - purchase_price) / current_value * 100.0) if current_value > 0 else 0.0, 2),
+        },
+        "simulated": {
+            "selling_price": round(simulated_selling_price, 2),
+            "profit": round(simulated_profit, 2),
+            "margin_percent": round(simulated_margin, 2),
+            "risk_level": risk_level,
+            "risk_score": round(risk_score, 3),
+            "recommendation": recommendation.get("recommendation"),
+            "recommendation_reason": recommendation.get("recommendation_reason"),
+        },
+        "inputs": {
+            "coePercent": request.coePercent,
+            "parfPercent": request.parfPercent,
+            "depreciationRate": request.depreciationRate,
+        }
+    }
 
 
 if __name__ == "__main__":
