@@ -46,10 +46,53 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_user_by_username(username: str) -> Optional[Dict[str, str]]:
     with get_conn() as conn:
         row = conn.execute(
-            "SELECT username, password_hash, role FROM users WHERE username = ?",
+            "SELECT id, username, password_hash, role, created_at FROM users WHERE username = ?",
             (username,),
         ).fetchone()
         return dict(row) if row else None
+
+
+def get_user_by_id(user_id: int) -> Optional[Dict[str, str]]:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id, username, role, created_at FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def get_all_users() -> list[Dict[str, str]]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT id, username, role, created_at FROM users ORDER BY created_at DESC"
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def create_user(username: str, password: str, role: str) -> Dict[str, str]:
+    password_hash = hash_password(password)
+    created_at = datetime.utcnow().isoformat()
+    with get_conn() as conn:
+        cursor = conn.execute(
+            "INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)",
+            (username, password_hash, role, created_at),
+        )
+        user_id = cursor.lastrowid
+    return {
+        "id": user_id,
+        "username": username,
+        "role": role,
+        "created_at": created_at,
+    }
+
+
+def delete_user(user_id: int) -> bool:
+    with get_conn() as conn:
+        cursor = conn.execute(
+            "DELETE FROM users WHERE id = ?",
+            (user_id,),
+        )
+        return cursor.rowcount > 0
 
 
 def verify_user_credentials(username: str, password: str) -> bool:
