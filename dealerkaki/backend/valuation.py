@@ -43,30 +43,31 @@ def calculate_parf_rebate(age_years: float, arf: float, registration_date: date)
     return round(min(arf * rate, cap))
 
 
+def _minimum_parf_value_at_coe_end(arf: float, registration_date: date) -> float:
+    """Return the minimum PARF value payable at the end of a 10-year COE life."""
+    pre_cutoff = _is_pre_cutoff(registration_date)
+    rate = 0.50 if pre_cutoff else 0.05
+    cap = _OLD_PARF_CAP if pre_cutoff else _NEW_PARF_CAP
+    return round(min(arf * rate, cap))
+
+
 def calculate_base_depreciation(
     age_years: float, arf: float, coe: float, registration_date: date
 ) -> float:
     """
-    Calculate base depreciation.
+    Calculate annual depreciation based on COE life remaining.
 
-    New-scheme cars depreciate more because they return far less PARF at
-    deregistration. Half of that lost PARF value is baked in as additional
-    effective depreciation (the other half is priced into market value).
+    Depreciation = (List Price - Minimum PARF value) / remaining years of COE.
+    The value of the car body is not taken into account.
     """
-    pre_cutoff = _is_pre_cutoff(registration_date)
-    age_factor = min(1.0, age_years / 8)
-    arf_depreciation = arf * (0.12 + age_factor * 0.08)
-    coe_depreciation = coe * 0.05
+    remaining_years = max(0.0, 10.0 - age_years)
+    if remaining_years <= 0:
+        return 0.0
 
-    # Extra depreciation penalty for new-scheme vehicles
-    if not pre_cutoff:
-        old_rebate = min(arf * _parf_rate(age_years, pre_cutoff=True), _OLD_PARF_CAP)
-        new_rebate = min(arf * _parf_rate(age_years, pre_cutoff=False), _NEW_PARF_CAP)
-        parf_loss_penalty = (old_rebate - new_rebate) * 0.5
-    else:
-        parf_loss_penalty = 0.0
-
-    return round(arf_depreciation + coe_depreciation + parf_loss_penalty)
+    list_price = arf + coe
+    minimum_parf_value = _minimum_parf_value_at_coe_end(arf, registration_date)
+    depreciation = (list_price - minimum_parf_value) / remaining_years
+    return round(max(0.0, depreciation))
 
 
 def estimate_market_price(
