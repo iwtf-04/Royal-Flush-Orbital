@@ -55,7 +55,6 @@ app.add_middleware(
 
 
 class ValuationRequest(BaseModel):
-    ageYears: float
     arf: float
     coe: float
     registrationDate: str  # ISO format: YYYY-MM-DD
@@ -157,7 +156,6 @@ async def vehicle_valuation(request: ValuationRequest):
     try:
         registration_date = date.fromisoformat(request.registrationDate)
         result = get_vehicle_valuation(
-            age_years=request.ageYears,
             arf=request.arf,
             coe=request.coe,
             registration_date=registration_date
