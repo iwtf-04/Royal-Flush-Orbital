@@ -12,7 +12,6 @@ interface FormData {
   mileage: string;
   vehicleType: string;
   seatCount: string;
-  ageYears: string;
   arf: string;
   coe: string;
   registrationDate: string;
@@ -47,7 +46,6 @@ const initialForm: FormData = {
   mileage: '0',
   vehicleType: 'Sedan',
   seatCount: '5',
-  ageYears: '',
   arf: '',
   coe: '',
   registrationDate: '',
@@ -91,7 +89,6 @@ function App() {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          ageYears: Number(form.ageYears),
           arf: Number(form.arf),
           coe: Number(form.coe),
           registrationDate: form.registrationDate
@@ -311,19 +308,6 @@ function App() {
                     <section className="form-card">
                       <h2>Vehicle Details</h2>
                       <form onSubmit={handleSubmit}>
-                        <label>
-                          Vehicle Age (years)
-                          <input
-                            type="number"
-                            name="ageYears"
-                            min="0"
-                            step="0.1"
-                            placeholder="Enter vehicle age"
-                            value={form.ageYears}
-                            onChange={handleChange}
-                          />
-                        </label>
-
                         <label>
                           Make
                           <input

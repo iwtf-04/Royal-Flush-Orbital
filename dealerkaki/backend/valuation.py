@@ -20,6 +20,13 @@ def _is_pre_cutoff(registration_date: date) -> bool:
     return registration_date < PARF_2026_CUTOFF
 
 
+def _calculate_age_years(registration_date: date, reference_date: date | None = None) -> float:
+    if reference_date is None:
+        reference_date = date.today()
+    age_days = (reference_date - registration_date).days
+    return round(max(0.0, age_days / 365.25), 2)
+
+
 def _parf_rate(age_years: float, pre_cutoff: bool) -> float:
     """Return the applicable PARF rebate rate for a given age and scheme."""
     for upper, old_rate, new_rate in _PARF_BRACKETS:
@@ -113,7 +120,6 @@ def recommend_intake_price(
 
 
 def get_vehicle_valuation(
-    age_years: float,
     arf: float,
     coe: float,
     registration_date: date,
@@ -122,19 +128,19 @@ def get_vehicle_valuation(
     Get complete vehicle valuation with all metrics.
 
     Args:
-        age_years:         Vehicle age in years at point of valuation.
         arf:               Additional Registration Fee paid (SGD).
         coe:               Certificate of Entitlement value at registration (SGD).
         registration_date: Date the vehicle was first registered in Singapore.
                            Determines which PARF scheme applies.
     """
-    if not all(isinstance(v, (int, float)) for v in (age_years, arf, coe)):
-        raise ValueError("age_years, arf, and coe must be numbers.")
-    if any(v < 0 for v in (age_years, arf, coe)):
-        raise ValueError("age_years, arf, and coe must be non-negative.")
     if not isinstance(registration_date, date):
         raise ValueError("registration_date must be a datetime.date object.")
+    if not all(isinstance(v, (int, float)) for v in (arf, coe)):
+        raise ValueError("arf and coe must be numbers.")
+    if any(v < 0 for v in (arf, coe)):
+        raise ValueError("arf and coe must be non-negative.")
 
+    age_years = _calculate_age_years(registration_date)
     pre_cutoff = _is_pre_cutoff(registration_date)
 
     return {
