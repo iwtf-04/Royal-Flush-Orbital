@@ -45,7 +45,7 @@ function ScenarioSimulation({ authToken }: Props) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [coePercent, setCoePercent] = useState<number>(0);
-  const [parfPercent, setParfPercent] = useState<number>(0);
+  const [parfScheme, setParfScheme] = useState<'pre' | 'post'>('pre');
   const [depreciationRate, setDepreciationRate] = useState<number>(0.05);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
@@ -62,7 +62,7 @@ function ScenarioSimulation({ authToken }: Props) {
 
     coeRange.forEach((coePercent) => {
       const coe_multiplier = 1.0 + coePercent / 100.0;
-      const parf_multiplier = 1.0 + parfPercent / 100.0;
+      const parf_multiplier = 1.0;
       const depreciation_loss = current_value * depreciationRate;
 
       const simulated_value =
@@ -87,7 +87,7 @@ function ScenarioSimulation({ authToken }: Props) {
 
   useEffect(() => {
     generateTrendData();
-  }, [coePercent, parfPercent, depreciationRate, selectedVehicle]);
+  }, [coePercent, parfScheme, depreciationRate, selectedVehicle]);
 
   useEffect(() => {
     fetch('/api/inventory')
@@ -126,7 +126,7 @@ function ScenarioSimulation({ authToken }: Props) {
         },
         body: JSON.stringify({
           coePercent: coePercent,
-          parfPercent: parfPercent,
+          parfScheme: parfScheme,
           depreciationRate: depreciationRate,
         }),
       });
@@ -182,9 +182,11 @@ function ScenarioSimulation({ authToken }: Props) {
           </label>
 
           <label>
-            PARF Rebate Adjustment (%)
-            <input type="range" min={-30} max={30} value={parfPercent} onChange={(e) => setParfPercent(Number(e.target.value))} />
-            <div>{parfPercent}%</div>
+            PARF Scheme
+            <select value={parfScheme} onChange={(e) => setParfScheme(e.target.value as 'pre' | 'post')}>
+              <option value="pre">Pre-Budget 2026 (old PARF rebate)</option>
+              <option value="post">Post-Budget 2026 (new PARF rebate)</option>
+            </select>
           </label>
 
           <label>

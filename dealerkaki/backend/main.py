@@ -27,6 +27,7 @@ from inventory import (
 from inventory import get_vehicle_by_id, calculate_risk_score, determine_risk_level, determine_recommendation
 from valuation import (
     calculate_parf_rebate,
+    calculate_parf_rebate_by_scheme,
     calculate_base_depreciation,
     estimate_market_price,
     recommend_intake_price,
@@ -101,7 +102,7 @@ class InventorySaleRequest(BaseModel):
 
 class SimulationRequest(BaseModel):
     coePercent: float  # e.g., -20 to +20
-    parfPercent: float  # e.g., -30 to +30
+    parfScheme: str  # "pre" for pre-Budget2026, "post" for post-Budget2026
     depreciationRate: float  # decimal fraction e.g., 0.05 for 5%
 
 
@@ -319,13 +320,29 @@ async def simulate_vehicle_scenario(vehicle_id: int, request: SimulationRequest,
     # Apply simulation
     current_value = float(vehicle.get("current_market_value") or vehicle.get("estimated_value") or 0)
     purchase_price = float(vehicle.get("purchase_price") or 0)
+    arf = float(vehicle.get("arf") or 0)
+    coe = float(vehicle.get("coe") or vehicle.get("current_coe") or 0)
 
     coe_multiplier = 1.0 + (request.coePercent / 100.0)
-    parf_multiplier = 1.0 + (request.parfPercent / 100.0)
     depreciation_rate = float(request.depreciationRate)
 
-    simulated_value = current_value * coe_multiplier * parf_multiplier
-    depreciation_loss = current_value * depreciation_rate
+    # Determine simulated PARF rebate from chosen policy scheme
+    if request.parfScheme not in ("pre", "post"):
+        raise HTTPException(status_code=400, detail="parfScheme must be 'pre' or 'post'.")
+
+    vehicle_registration_date = vehicle.get("registration_date")
+    age_years = 0.0
+    if vehicle_registration_date:
+        try:
+            registration_date = date.fromisoformat(vehicle_registration_date)
+            age_years = round(max(0.0, (date.today() - registration_date).days / 365.25), 2)
+        except ValueError:
+            age_years = 0.0
+
+    parf_rebate = calculate_parf_rebate_by_scheme(age_years, arf, request.parfScheme)
+    simulated_base = arf + coe + parf_rebate
+    simulated_value = simulated_base * coe_multiplier
+    depreciation_loss = simulated_value * depreciation_rate
     simulated_value = max(0.0, simulated_value - depreciation_loss)
 
     # For simplicity assume simulated selling price equals simulated value
@@ -356,7 +373,7 @@ async def simulate_vehicle_scenario(vehicle_id: int, request: SimulationRequest,
         },
         "inputs": {
             "coePercent": request.coePercent,
-            "parfPercent": request.parfPercent,
+            "parfScheme": request.parfScheme,
             "depreciationRate": request.depreciationRate,
         }
     }
