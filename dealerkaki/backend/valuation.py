@@ -50,6 +50,18 @@ def calculate_parf_rebate(age_years: float, arf: float, registration_date: date)
     return round(min(arf * rate, cap))
 
 
+def calculate_parf_rebate_by_scheme(age_years: float, arf: float, scheme: str) -> float:
+    """Calculate PARF rebate for a simulated scheme override."""
+    if age_years >= 10:
+        return 0.0
+    if scheme not in ("pre", "post"):
+        raise ValueError("Scheme must be 'pre' or 'post'.")
+    pre_cutoff = scheme == "pre"
+    rate = _parf_rate(age_years, pre_cutoff)
+    cap = _OLD_PARF_CAP if pre_cutoff else _NEW_PARF_CAP
+    return round(min(arf * rate, cap))
+
+
 def _minimum_parf_value_at_coe_end(arf: float, registration_date: date) -> float:
     """Return the minimum PARF value payable at the end of a 10-year COE life."""
     pre_cutoff = _is_pre_cutoff(registration_date)

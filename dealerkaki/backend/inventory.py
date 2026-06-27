@@ -101,6 +101,8 @@ def _normalize_vehicle(row: Dict[str, Any]) -> Dict[str, Any]:
         "age": vehicle_age,
         "mileage": int(vehicle.get("mileage") or 0),
         "purchase_price": float(purchase_price),
+        "arf": float(vehicle.get("arf") or 0),
+        "registration_date": vehicle.get("registration_date") or "",
         "current_market_value": float(current_market_value),
         "recommended_intake_price": float(vehicle.get("recommended_intake_price") or max(current_market_value * 0.92, purchase_price * 0.95)),
         "target_selling_price": float(vehicle.get("target_selling_price") or max(current_market_value * 1.08, purchase_price * 1.05)),
