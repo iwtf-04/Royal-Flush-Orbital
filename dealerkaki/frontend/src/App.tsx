@@ -3,6 +3,7 @@ import Login from './Login';
 import InventoryDashboard from './InventoryDashboard';
 import ScenarioSimulation from './ScenarioSimulation';
 import MembersEditor from './MembersEditor';
+import PricePredictorPanel from './PricePredictorPanel';
 
 interface FormData {
   make: string;
@@ -36,7 +37,7 @@ interface UserProfile {
   role: string;
 }
 
-type FeatureId = 'dashboard' | 'valuation' | 'simulation' | 'inventory' | 'members';
+type FeatureId = 'dashboard' | 'valuation' | 'simulation' | 'inventory' | 'members' | 'predictor';
 
 const initialForm: FormData = {
   make: '',
@@ -188,14 +189,20 @@ function App() {
       roles: ['admin', 'dealer', 'inventory manager', 'frontline staff'],
     },
     {
+      id: 'predictor' as const,
+      title: '3) PRICE PREDICTOR',
+      description: 'Estimate a vehicle selling price using the trained predictive pricing model.',
+      roles: ['admin', 'dealer', 'frontline staff'],
+    },
+    {
       id: 'simulation' as const,
-      title: '3) SCENARIO SIMULATION TOOL',
+      title: '4) SCENARIO SIMULATION TOOL',
       description: 'Build and compare vehicle trade-in scenarios for margin planning.',
       roles: ['admin', 'dealer'],
     },
     {
       id: 'members' as const,
-      title: '4) EDIT MEMBERS',
+      title: '5) EDIT MEMBERS',
       description: 'Manage salesperson and dealer access for the application.',
       roles: ['admin', 'dealer'],
     },
@@ -504,6 +511,14 @@ function App() {
                     </>
                     )}
                   </>
+                )}
+
+                {activeFeature === 'predictor' && (
+                  <section className="form-card">
+                    <h2>Price Predictor</h2>
+                    <p>Estimate a vehicle selling price with the trained pricing model.</p>
+                    <PricePredictorPanel authToken={authToken} />
+                  </section>
                 )}
 
                 {activeFeature === 'simulation' && (

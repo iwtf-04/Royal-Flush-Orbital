@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -33,6 +34,8 @@ from valuation import (
     recommend_intake_price,
     get_vehicle_valuation,
 )
+from prediction_service import predict_price
+from schemas import PricePredictionRequest, PricePredictionResponse
 
 app = FastAPI()
 
@@ -164,6 +167,26 @@ async def vehicle_valuation(request: ValuationRequest):
         return result
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error))
+
+
+@app.post("/api/predict-price", response_model=PricePredictionResponse)
+async def predict_price_endpoint(request: PricePredictionRequest):
+    try:
+        predicted_value = predict_price(
+            brand=request.brand,
+            name=request.name,
+            registration_date=request.registration_date.isoformat(),
+            mileage=request.mileage,
+            owners=request.owners,
+            depreciation=request.depreciation,
+        )
+        return PricePredictionResponse(predicted_price=predicted_value)
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=500, detail="Prediction model files are not available") from error
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=500, detail="Prediction failed") from error
 
 
 @app.get("/api/inventory")
@@ -381,4 +404,7 @@ async def simulate_vehicle_scenario(vehicle_id: int, request: SimulationRequest,
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=3000)
+
+    host = os.getenv("HOST", "127.0.0.1")
+    port = int(os.getenv("PORT", "8002"))
+    uvicorn.run("main:app", host=host, port=port, reload=False)

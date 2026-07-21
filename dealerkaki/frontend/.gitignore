@@ -1,2 +1,4 @@
 node_modules
 dist
+# ML model artifacts
+backend/ml/*.joblib
