@@ -75,7 +75,7 @@ function PricePredictorPanel({ authToken }: Props) {
           <input type="text" name="brand" value={form.brand} onChange={handleChange} required />
         </label>
         <label>
-          Name
+          Model
           <input type="text" name="name" value={form.name} onChange={handleChange} required />
         </label>
         <label>
@@ -87,7 +87,7 @@ function PricePredictorPanel({ authToken }: Props) {
           <input type="number" name="mileage" min="0" step="100" value={form.mileage} onChange={handleChange} required />
         </label>
         <label>
-          Owners
+          Number of Owners
           <input type="number" name="owners" min="0" step="1" value={form.owners} onChange={handleChange} required />
         </label>
         <label>
