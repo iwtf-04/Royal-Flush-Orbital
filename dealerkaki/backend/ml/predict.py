@@ -1,9 +1,16 @@
+import os
+import subprocess
 import sys
 from pathlib import Path
 
 import joblib
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
+
+try:
+    from sklearn.ensemble import RandomForestRegressor
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "pandas", "joblib", "scikit-learn"])
+    from sklearn.ensemble import RandomForestRegressor
 
 ML_DIR = Path(__file__).resolve().parent
 if str(ML_DIR) not in sys.path:
