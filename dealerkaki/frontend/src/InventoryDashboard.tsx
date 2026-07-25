@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { parseApiResponse } from './api';
 
 interface Vehicle {
   id: number;
@@ -77,7 +78,7 @@ function InventoryDashboard() {
       if (!response.ok) {
         throw new Error('Failed to fetch inventory');
       }
-      const data: InventoryData = await response.json();
+      const data = await parseApiResponse<InventoryData>(response);
       setInventory(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -201,9 +202,9 @@ function InventoryDashboard() {
         }),
       });
 
-      const data = await response.json();
+      const data = await parseApiResponse<{ vehicle?: Vehicle; detail?: string }>(response);
       if (!response.ok) {
-        throw new Error('detail' in data ? (data as any).detail : 'Failed to confirm sale');
+        throw new Error('detail' in data ? data.detail : 'Failed to confirm sale');
       }
       if (data.vehicle) {
         setSelectedVehicle(data.vehicle);
@@ -228,9 +229,9 @@ function InventoryDashboard() {
       const response = await fetch(`/api/inventory/${vehicle.id}`, {
         method: 'DELETE',
       });
-      const data = await response.json();
+      const data = await parseApiResponse<{ detail?: string }>(response);
       if (!response.ok) {
-        throw new Error('detail' in data ? (data as any).detail : 'Failed to remove vehicle');
+        throw new Error('detail' in data ? data.detail : 'Failed to remove vehicle');
       }
       if (inventory) {
         setInventory({

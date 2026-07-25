@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { parseApiResponse } from './api';
 
 interface UserRecord {
   id: number;
@@ -37,7 +38,7 @@ function MembersEditor({ authToken }: Props) {
           Authorization: authToken ? `Bearer ${authToken}` : '',
         },
       });
-      const data = await response.json();
+      const data = await parseApiResponse<{ users?: UserRecord[]; detail?: string }>(response);
       if (!response.ok) {
         throw new Error('detail' in data ? data.detail : 'Failed to fetch users');
       }
@@ -74,7 +75,7 @@ function MembersEditor({ authToken }: Props) {
           role: newRole,
         }),
       });
-      const data = await response.json();
+      const data = await parseApiResponse<{ user?: { username?: string }; detail?: string }>(response);
       if (!response.ok) {
         throw new Error('detail' in data ? data.detail : 'Failed to add user');
       }
@@ -100,7 +101,7 @@ function MembersEditor({ authToken }: Props) {
           Authorization: authToken ? `Bearer ${authToken}` : '',
         },
       });
-      const data = await response.json();
+      const data = await parseApiResponse<{ detail?: string }>(response);
       if (!response.ok) {
         throw new Error('detail' in data ? data.detail : 'Failed to remove user');
       }

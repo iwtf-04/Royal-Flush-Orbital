@@ -4,6 +4,7 @@ import InventoryDashboard from './InventoryDashboard';
 import ScenarioSimulation from './ScenarioSimulation';
 import MembersEditor from './MembersEditor';
 import PricePredictorPanel from './PricePredictorPanel';
+import { parseApiResponse } from './api';
 
 interface FormData {
   make: string;
@@ -96,11 +97,11 @@ function App() {
         })
       });
 
-      const data: ValuationResult = await response.json();
+      const data = await parseApiResponse<ValuationResult | { detail?: string }>(response);
       if (!response.ok) {
-        throw new Error('detail' in data ? (data as any).detail : 'Failed to calculate valuation');
+        throw new Error('detail' in data ? (data as { detail?: string }).detail : 'Failed to calculate valuation');
       }
-      setResult(data);
+      setResult(data as ValuationResult);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
@@ -143,9 +144,9 @@ function App() {
         }),
       });
 
-      const data = await response.json();
+      const data = await parseApiResponse<{ detail?: string }>(response);
       if (!response.ok) {
-        throw new Error('detail' in data ? (data as any).detail : 'Failed to add vehicle to inventory');
+        throw new Error('detail' in data ? data.detail : 'Failed to add vehicle to inventory');
       }
 
       setInventorySaveMessage('Vehicle added to inventory successfully.');

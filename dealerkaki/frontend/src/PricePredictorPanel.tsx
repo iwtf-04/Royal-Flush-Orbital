@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { parseApiResponse } from './api';
 
 interface Props {
   authToken: string | null;
@@ -54,9 +55,13 @@ function PricePredictorPanel({ authToken }: Props) {
         }),
       });
 
-      const data = await response.json();
+      const data = await parseApiResponse<{ predicted_price?: number; detail?: string }>(response);
       if (!response.ok) {
         throw new Error('detail' in data ? data.detail : 'Failed to predict price');
+      }
+
+      if (typeof data.predicted_price !== 'number') {
+        throw new Error('Prediction response was incomplete');
       }
 
       setPrediction(data.predicted_price);

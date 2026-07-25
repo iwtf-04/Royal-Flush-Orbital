@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { parseApiResponse } from './api';
 
 interface LoginProps {
   onLogin: (token: string, username: string, role: string) => void;
@@ -26,9 +27,13 @@ function Login({ onLogin }: LoginProps) {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await response.json();
+      const data = await parseApiResponse<{ detail?: string; token?: string; username?: string; role?: string }>(response);
       if (!response.ok) {
         throw new Error(data.detail || 'Invalid login');
+      }
+
+      if (!data.token || !data.username || !data.role) {
+        throw new Error('Login response was incomplete');
       }
 
       setMessage('Login successful');

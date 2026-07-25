@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Line } from 'react-chartjs-2';
+import { parseApiResponse } from './api';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -91,12 +92,12 @@ function ScenarioSimulation({ authToken }: Props) {
 
   useEffect(() => {
     fetch('/api/inventory')
-      .then((res) => res.json())
+      .then((res) => parseApiResponse<{ vehicles?: Vehicle[] }>(res))
       .then((data) => {
         setVehicles(data.vehicles || []);
         setLoading(false);
       })
-      .catch((err) => {
+      .catch(() => {
         setError('Failed to fetch inventory');
         setLoading(false);
       });
@@ -130,7 +131,7 @@ function ScenarioSimulation({ authToken }: Props) {
           depreciationRate: depreciationRate,
         }),
       });
-      const data = await response.json();
+      const data = await parseApiResponse<{ detail?: string }>(response);
       if (!response.ok) {
         throw new Error('detail' in data ? data.detail : 'Simulation failed');
       }
